@@ -6,12 +6,13 @@
 #使い方 ./detect_tool.py *.pcap
 
 from optparse import OptionParser, OptionValueError
-import os,sys,dpkt,socket,json
+import os,sys,dpkt,socket,json,binascii
 
 SIG_FILE="signature.json"
 
 #単一値の判定
 def s_match(obj,s):
+    print obj,s
     if s != "*":
         if obj == s:
             return True
@@ -36,21 +37,25 @@ def pattern_match_tcp(ip,tcp,sig):
         #単一値の判定
         for k, v in s["s_data"].items():
             if k == "ipid":
-                    flag = s_match(ip.id,v)
+                flag = s_match(ip.id,v)
             if k == "flags":
-                    flag = s_match(ip.off,v)
+                flag = s_match(ip.off,v)
             if k == "seq":
-                    flag = s_match(tcp.seq,v)
+                flag = s_match(tcp.seq,v)
             if k == "ack":
-                    flag = s_match(tcp.ack,v)
+                flag = s_match(tcp.ack,v)
             if k == "sport":
-                    flag = s_match(tcp.sport,v)
+                flag = s_match(tcp.sport,v)
             if k == "dport":
-                    flag = s_match(tcp.dport,v)
+                flag = s_match(tcp.dport,v)
             if k == "win":
-                    flag = s_match(tcp.win,v)
+                flag = s_match(tcp.win,v)
             if k == "option":
-                    flag = s_match(tcp.opts,v)
+                tcp_option = binascii.b2a_hex(tcp.opts)
+                print int(hex(v))
+                print tcp_option
+                print tcp_option == hex(v)
+                flag = s_match(tcp.opts,sig_option)
             if not flag:
                 break
         if not flag:
@@ -58,19 +63,19 @@ def pattern_match_tcp(ip,tcp,sig):
         #範囲値の判定   
         for k,v in s["r_data"].items():
             if k == "ipid":
-                    flag = r_match(ip.id,v)
+                flag = r_match(ip.id,v)
             if k == "ttl":
-                    flag = r_match(ip.ttl,v)
+                flag = r_match(ip.ttl,v)
             if k == "seq":
-                    flag = r_match(tcp.seq,v)
+                flag = r_match(tcp.seq,v)
             if k == "ack":
-                    flag = r_match(tcp.ack,v)
+                flag = r_match(tcp.ack,v)
             if k == "sport":
-                    flag = r_match(tcp.sport,v)
+                flag = r_match(tcp.sport,v)
             if k == "dport":
-                    flag = r_match(tcp.dport,v)
+                flag = r_match(tcp.dport,v)
             if k == "win":
-                    flag = r_match(tcp.win,v)
+                flag = r_match(tcp.win,v)
             if not flag:
                 break
         if not flag:
@@ -78,21 +83,21 @@ def pattern_match_tcp(ip,tcp,sig):
         #複数値の判定
         for k, v in s["m_data"].items():
             if k == "ipid":
-                    flag = s_match(ip.id,v)
+                flag = s_match(ip.id,v)
             if k == "flags":
-                    flag = s_match(tcp.flags,v)
+                flag = s_match(tcp.flags,v)
             if k == "seq":
-                    flag = s_match(tcp.seq,v)
+                flag = s_match(tcp.seq,v)
             if k == "ack":
-                    flag = s_match(tcp.ack,v)
+                flag = s_match(tcp.ack,v)
             if k == "sport":
-                    flag = s_match(tcp.sport,v)
+                flag = s_match(tcp.sport,v)
             if k == "dport":
-                    flag = s_match(tcp.dport,v)
+                flag = s_match(tcp.dport,v)
             if k == "win":
-                    flag = s_match(tcp.win,v)
+                flag = s_match(tcp.win,v)
             if k == "option":
-                    flag = s_match(tcp.opts,v)
+                flag = s_match(tcp.opts,v)
             if not flag:
                 break
         if flag:
@@ -133,7 +138,9 @@ def packet_parse(filepath):
                 tcp = ip.data
                 if tcp.flags!=2:#SYN flag
                     continue
-                print ord(dpkt.tcp.parse_opts(tcp.opts)[0][1])
+                print binascii.hexlify(tcp.opts)
+                print dpkt.tcp.parse_opts(tcp.opts)
+                #print dpkt.tcp.parse_opts(tcp.opts)[0][0])
                 print (ip.id,ip.ttl,ip.off,tcp.seq,tcp.ack,tcp.sport,tcp.dport,tcp.win,tcp.opts)
                 sig_name = pattern_match_tcp(ip,tcp,sig) #パターンマッチング
                 if sig_name:
