@@ -57,7 +57,7 @@ def pattern_match_tcp(ip,tcp,sig):
                 flag = s_match(tcp.win,v)
             if k == "option":
                 tcp_option = binascii.b2a_hex(tcp.opts)
-                #dpkt.tcp.parse_opts(tcp.opts)
+                #print dpkt.tcp.parse_opts(tcp.opts)
                 sig_option = v
                 flag = s_match(tcp_option,sig_option)
             if not flag:
@@ -109,7 +109,7 @@ def pattern_match_tcp(ip,tcp,sig):
         else:
             return false
 
-def pattern_match_icmp():
+def pattern_match_icmp(ip,icmp,sig):
     pass
 
 def packet_parse(filepath):
@@ -136,16 +136,18 @@ def packet_parse(filepath):
         #IP Header
         if type(eth.data) == dpkt.ip.IP:
             ip = eth.data
+            src_addr=socket.inet_ntoa(ip.src)
+            dst_addr=socket.inet_ntoa(ip.dst)
             
             #TCP Header
             if type(ip.data) == dpkt.tcp.TCP:
                 tcp = ip.data
                 if tcp.flags!=2:#SYN flag
                     continue
-                print "header:",(ip.id,ip.ttl,ip.off,tcp.seq,tcp.ack,tcp.sport,tcp.dport,tcp.win,tcp.opts)
+                #print "header:",(ip.id,ip.ttl,ip.off,tcp.seq,tcp.ack,tcp.sport,tcp.dport,tcp.win,tcp.opts)
                 sig_name = pattern_match_tcp(ip,tcp,sig) #パターンマッチング
                 if sig_name:
-                    print "signame,",sig_name
+                    print "%s:%d -> %s:%d [%s]"%(src_addr,tcp.sport,dst_addr,tcp.dport,sig_name)
                 #signature(ip,tcp,src_addr,dst_addr)
                 
             #UDP Header
@@ -157,7 +159,8 @@ def packet_parse(filepath):
                 icmp = ip.data
                 #ICMP Echo Request
                 if type(icmp.data) == dpkt.icmp.ICMP.Echo:
-                    print "aaaaaaaaa",icmp.data.id
+                    icmp_echo = icmp.data
+
     pcap_f.close()
 
 if __name__ == '__main__':
