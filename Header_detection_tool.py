@@ -6,9 +6,29 @@
 #使い方 ./detect_tool.py *.pcap
 
 from optparse import OptionParser, OptionValueError
-import os,sys,dpkt,socket,json,binascii
+import os,sys,dpkt,socket,json,binascii,datetime
 
 SIG_FILE="signature.json"
+
+def tcp_flags(flags):
+    ret = ''
+    if flags & dpkt.tcp.TH_FIN:
+        ret = ret + 'F'
+    if flags & dpkt.tcp.TH_SYN:
+        ret = ret + 'S'
+    if flags & dpkt.tcp.TH_RST:
+        ret = ret + 'R'
+    if flags & dpkt.tcp.TH_PUSH:
+        ret = ret + 'P'
+    if flags & dpkt.tcp.TH_ACK:
+        ret = ret + '.'
+    if flags & dpkt.tcp.TH_URG:
+        ret = ret + 'U'
+    if flags & dpkt.tcp.TH_ECE:
+        ret = ret + 'E'
+    if flags & dpkt.tcp.TH_CWR:
+        ret = ret + 'C'
+    return ret
 
 #単一値の判定
 def s_match(obj,s):
@@ -112,16 +132,39 @@ def pattern_match_tcp(ip,tcp,sig):
 def pattern_match_icmp(ip,icmp,sig):
     pass
 
-def packet_parse(filepath):
+def print_line_result(print_data,options,ts_date,sig_name):
+    if not sig_name:
+        sig_name = "None"
+    if options.time:
+        print "%s %s [%s]"%(ts_date,print_data,sig_name)
+    else:
+        print "%s [%s]"%(print_data,sig_name)
+
+def print_tcp_result(print_data,ts_date,ip,tcp,sig_name):
+
+    print """
+<< %s >>
+| date       = %s
+| signnature = %s
+| 
+ ---"""%(print_data,ts_date,sig_name)
     
-    pcap_f=open(filepath)
-    pcap = dpkt.pcap.Reader(pcap_f)
+    
+
+def packet_parse(options):
+    
+    pcap_f=open(options.filepath)
+    try:
+        pcap = dpkt.pcap.Reader(pcap_f)
+    except:
+        print "Error: unknown file format"
+        sys.exit()
     
     #シグネチャファイル確認
     try:
         sig_f=open(SIG_FILE)
     except IOError:
-        print 'Error : "%s" cannot be opened.' %SIG_FILE
+        print 'Error: "%s" cannot be opened.' %SIG_FILE
         sys.exit()
     else:
         sig = json.load(sig_f)
@@ -132,6 +175,8 @@ def packet_parse(filepath):
             eth = dpkt.ethernet.Ethernet(buf)
         except:
             continue
+            
+        sig_name = False #検知結果のリセット
         
         #IP Header
         if type(eth.data) == dpkt.ip.IP:
@@ -142,14 +187,15 @@ def packet_parse(filepath):
             #TCP Header
             if type(ip.data) == dpkt.tcp.TCP:
                 tcp = ip.data
-                if tcp.flags!=2:#SYN flag
-                    continue
+                flags =  tcp_flags(tcp.flags)
                 #print "header:",(ip.id,ip.ttl,ip.off,tcp.seq,tcp.ack,tcp.sport,tcp.dport,tcp.win,tcp.opts)
                 sig_name = pattern_match_tcp(ip,tcp,sig) #パターンマッチング
-                if sig_name:
-                    print "%s:%d -> %s:%d [%s]"%(src_addr,tcp.sport,dst_addr,tcp.dport,sig_name)
-                #signature(ip,tcp,src_addr,dst_addr)
-                
+                print_data = "[%s] %s:%d -> %s:%d"%(flags,src_addr,tcp.sport,dst_addr,tcp.dport)#TCP書式
+                ts_date =  datetime.datetime.utcfromtimestamp(ts)
+                if options.line:
+                    print_line_result(print_data,options,ts_date,sig_name)
+                else:
+                    print_tcp_result(print_data,ts_date,ip,tcp,sig_name)
             #UDP Header
             if type(ip.data) == dpkt.udp.UDP:
                 udp = ip.data
@@ -178,8 +224,9 @@ if __name__ == '__main__':
         else:
             raise OptionValueError("option -f: '%s' was not found" % value)
 
+    #入力ファイル
     parser.add_option(
-        "-f", "--file", 
+        "-r", "--file", 
         action="callback",
         callback=check_file,
         type="string",
@@ -187,13 +234,39 @@ if __name__ == '__main__':
         #default="./",
         help="filepath"
         )
+    #VirusTotal結果
     parser.add_option(
-        "-x", "--VirusTotal",
+        "-v", "--VirusTotal",
         action="store_true",
         dest="vt",
         default=False,
         help="VirusTotal"
         )
+    #一行表示
+    parser.add_option(
+        "-l", "--line",
+        action="store_true",
+        dest="line",
+        default=False,
+        help="print single line"
+        )
+    #時間表示
+    parser.add_option(
+        "-t", "--time",
+        action="store_true",
+        dest="time",
+        default=False,
+        help="print single line"
+        )
+    """parser.set_defaults(
+        filepath - "./"
+    )"""
 
-    (options,args) = parser.parse_args() #オプションのパース
-    packet_parse(options.filepath) #pcapをパース、パターンマッチング
+    options,args = parser.parse_args() #オプションのパース
+    if not options.filepath:
+        #print usage
+        parser.error("file is required")
+        #parser.print_help()
+        sys.exit()
+    else:
+        packet_parse(options) #pcapをパース、パターンマッチング
