@@ -44,7 +44,9 @@
                 "dport":3389,
                 "win":16384
                 },
-        "r_data":{"ttl":[0,128]}
+        "r_data":{
+                "ttl":[65,128]},
+        "m_data":{}
              },
      {
         "signature":"Dark_dst3389_2",
@@ -57,8 +59,26 @@
                 "dport":3389,
                 "win":512
                 },
-        "r_data":{"ttl":[0,128]}
+        "r_data":{
+                "ttl":[65,128]},
+        "m_data":{}
+             },
+     {
+        "signature":"Zmap_tcp",
+        "s_data":{
+                "ipid":54321,
+                "off":0,
+                "seq":"*",
+                "ack":0,
+                "sport":"*",
+                "dport":"*",
+                "win":65535
+                },
+        "r_data":{
+                "ttl":[129,255]},
+        "m_data":{}
              }
+
      ],
 
     "icmp":[
