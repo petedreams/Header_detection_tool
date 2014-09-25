@@ -141,15 +141,21 @@ def print_line_result(print_data,options,ts_date,sig_name):
         print "%s [%s]"%(print_data,sig_name)
 
 def print_tcp_result(print_data,ts_date,ip,tcp,sig_name):
+    off = {0x8000:"RF",0x4000:"DF",0x2000:"MF",0x1fff:"0FFMASK",0x0000:"0"}
+    try:
+        ipoff = off[ip.off]
+    except:
+        ipoff = None
 
-    print """
+    str = """
 << %s >>
+|
 | date       = %s
 | signnature = %s
-| 
- ---"""%(print_data,ts_date,sig_name)
-    
-    
+| parameters = %s(ipid):%s(ttl):%s(ipoff):%s(seq):%s(ack):%s(win)
+|
+---"""
+    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,tcp.seq,tcp.ack,tcp.win)
 
 def packet_parse(options):
     
