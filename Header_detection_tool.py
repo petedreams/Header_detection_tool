@@ -63,23 +63,25 @@ def pattern_match_tcp(ip,tcp,sig):
         for k, v in s["s_data"].items():
             if k == "ipid":
                 flag = s_match(ip.id,v)
-            if k == "flags":
+            elif k == "flags":
                 flag = s_match(ip.off,v)
-            if k == "seq":
+            elif k == "seq":
                 flag = s_match(tcp.seq,v)
-            if k == "ack":
+            elif k == "ack":
                 flag = s_match(tcp.ack,v)
-            if k == "sport":
+            elif k == "sport":
                 flag = s_match(tcp.sport,v)
-            if k == "dport":
+            elif k == "dport":
                 flag = s_match(tcp.dport,v)
-            if k == "win":
+            elif k == "win":
                 flag = s_match(tcp.win,v)
-            if k == "option":
+            elif k == "option":
                 tcp_option = binascii.b2a_hex(tcp.opts)
                 #print dpkt.tcp.parse_opts(tcp.opts)
                 sig_option = v
                 flag = s_match(tcp_option,sig_option)
+            elif k == "len":
+                flag = s_match(len(tcp.data),v)
             if not flag:
                 break
         if not flag:
@@ -100,6 +102,8 @@ def pattern_match_tcp(ip,tcp,sig):
                 flag = r_match(tcp.dport,v)
             if k == "win":
                 flag = r_match(tcp.win,v)
+            if k == "len":
+                flag = r_match(len(tcp.data),v)
             if not flag:
                 break
         if not flag:
@@ -122,15 +126,170 @@ def pattern_match_tcp(ip,tcp,sig):
                 flag = m_match(tcp.win,v)
             if k == "option":
                 flag = m_match(tcp.opts,v)
+            if k == "len":
+                flag = m_match(len(tcp.data),v)
             if not flag:
                 break
         if flag:
             return s["signature"]
         else:
-            return false
+            return False
 
 def pattern_match_icmp(ip,icmp,sig):
-    pass
+    for s in sig["icmp"]:
+        flag = True
+        #単一値の判定
+        for k, v in s["s_data"].items():
+            if k == "ipid":
+                flag = s_match(ip.id,v)
+            if k == "off":
+                flag = s_match(ip.off,v)
+            if k == "icmpid":
+                flag = s_match(icmp.id,v)
+            if k == "icmpseq":
+                flag = s_match(icmp.seq,v)
+            if not flag:
+                break
+        if not flag:
+            continue
+        #範囲値の判定
+        for k, v in s["r_data"].items():
+            if k == "ipid":
+                flag = r_match(ip.id,v)
+            if k == "off":
+                flag = r_match(ip.off,v)
+            if k == "ttl":
+                flag = r_match(ip.ttl,v)
+            if k == "icmpid":
+                flag = r_match(icmp.id,v)
+            if k == "icmpseq":
+                flag = r_match(icmp.seq,v)
+            if not flag:
+                break
+        if not flag:
+            continue
+        #複数値の判定
+        for k, v in s["m_data"].items():
+            if k == "ipid":
+                flag = m_match(ip.id,v)
+            if k == "off":
+                flag = m_match(ip.off,v)
+            if k == "icmpid":
+                flag = m_match(icmp.id,v)
+            if k == "icmpseq":
+                flag = m_match(icmp.seq,v)
+            if not flag:
+                break
+        if flag:
+            return s["signature"]
+        else:
+            return False
+
+def pattern_match_dns(ip,udp,dns,sig):
+    for s in sig["dns"]:
+        flag = True
+        #単一値の判定
+        for k, v in s["s_data"].items():
+            if k == "ipid":
+                flag = s_match(ip.id,v)
+            if k == "off":
+                flag = s_match(ip.off,v)
+            if k == "sport":
+                flag = s_match(udp.sport,v)
+            if k == "dport":
+                flag = s_match(udp.dport,v)
+            if k == "dnsid":
+                flag = s_match(dns.id,v)
+            if not flag:
+                break
+        if not flag:
+            continue
+        #範囲値の判定
+        for k, v in s["r_data"].items():
+            if k == "ipid":
+                flag = r_match(ip.id,v)
+            if k == "off":
+                flag = r_match(ip.off,v)
+            if k == "ttl":
+                flag = r_match(ip.ttl,v)
+            if k == "sport":
+                flag = r_match(udp.sport,v)
+            if k == "dport":
+                flag = r_match(udp.dport,v)
+            if k == "dnsid":
+                flag = r_match(dns.id,v)
+            if not flag:
+                break
+        if not flag:
+            continue
+        #複数値の判定
+        for k, v in s["m_data"].items():
+            if k == "ipid":
+                flag = m_match(ip.id,v)
+            if k == "off":
+                flag = m_match(ip.off,v)
+            if k == "sport":
+                flag = m_match(udp.sport,v)
+            if k == "dport":
+                flag = m_match(udp.dport,v)
+            if k == "dnsid":
+                flag = m_match(dns.id,v)
+            if not flag:
+                break
+        if flag:
+            return s["signature"]
+        else:
+            return False
+
+def pattern_match_udp(ip,udp,sig):
+    for s in sig["udp"]:
+        flag = True
+        #単一値の判定
+        for k, v in s["s_data"].items():
+            if k == "ipid":
+                flag = s_match(ip.id,v)
+            if k == "off":
+                flag = s_match(ip.off,v)
+            if k == "sport":
+                flag = s_match(udp.sport,v)
+            if k == "dport":
+                flag = s_match(udp.dport,v)
+            if not flag:
+                break
+        if not flag:
+            continue
+        #範囲値の判定
+        for k, v in s["r_data"].items():
+            if k == "ipid":
+                flag = r_match(ip.id,v)
+            if k == "off":
+                flag = r_match(ip.off,v)
+            if k == "ttl":
+                flag = r_match(ip.ttl,v)
+            if k == "sport":
+                flag = r_match(udp.sport,v)
+            if k == "dport":
+                flag = r_match(udp.dport,v)
+            if not flag:
+                break
+        if not flag:
+            continue
+        #複数値の判定
+        for k, v in s["m_data"].items():
+            if k == "ipid":
+                flag = m_match(ip.id,v)
+            if k == "off":
+                flag = m_match(ip.off,v)
+            if k == "sport":
+                flag = m_match(udp.sport,v)
+            if k == "dport":
+                flag = m_match(udp.dport,v)
+            if not flag:
+                break
+        if flag:
+            return s["signature"]
+        else:
+            return False
 
 def print_line_result(print_data,options,ts_date,sig_name):
     if not sig_name:
@@ -140,22 +299,72 @@ def print_line_result(print_data,options,ts_date,sig_name):
     else:
         print "%s [%s]"%(print_data,sig_name)
 
-def print_tcp_result(print_data,ts_date,ip,tcp,sig_name):
+def ip_off(ip_off):
     off = {0x8000:"RF",0x4000:"DF",0x2000:"MF",0x1fff:"0FFMASK",0x0000:"0"}
     try:
-        ipoff = off[ip.off]
+        ipoff = off[ip_off]
     except:
         ipoff = None
+    return ipoff
+    
+def dns_type(dns_t):
+    t = {1:"DNS_A",2:"DNS_NS",5:"DNS_CNAME",6:"DNS_SOA",12:"DNS_PTR",13:"DNS_HINFO",15:"DNS_MX",16:"DNS_TXT",28:"DNS_AAAA",33:"DNS_SRV"}
+    try:
+        dnstype = t[dns_t]
+    except:
+        dnstype = None
+    return dnstype
 
+def print_tcp_result(print_data,ts_date,ip,tcp,sig_name):
+    ipoff = ip_off(ip.off)
     str = """
 << %s >>
 |
 | date       = %s
-| signnature = %s
+| signature  = %s
 | parameters = %s(ipid):%s(ttl):%s(ipoff):%s(seq):%s(ack):%s(win)
 |
 ---"""
     print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,tcp.seq,tcp.ack,tcp.win)
+
+def print_icmp_result(print_data,ts_date,ip,icmp,sig_name):
+    ipoff = ip_off(ip.off)
+    str = """
+<< %s >>
+|
+| date       = %s
+| signature  = %s
+| parameters = %s(ipid):%s(ttl):%s(ipoff):%s(icmpid):%s(icmpseq)
+|
+---"""
+    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,icmp.id,icmp.seq)
+    
+def print_dns_result(print_data,ts_date,ip,udp,dns,sig_name):
+    ipoff = ip_off(ip.off)
+    dnstype = dns_type(dns.qd[0].type)
+    str = """
+<< %s >>
+|
+| date       = %s
+| signature  = %s
+| parameters = %s(ipid):%s(ttl):%s(ipoff):%s(dnsid)
+| type = %s
+| name = %s
+|
+---"""
+    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,dns.id,dnstype,dns.qd[0].name)
+
+def print_udp_result(print_data,ts_date,ip,udp,sig_name):
+    ipoff = ip_off(ip.off)
+    str = """
+<< %s >>
+|
+| date       = %s
+| signature  = %s
+| parameters = %s(ipid):%s(ttl):%s(ipoff)
+|
+---"""
+    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff)
 
 def packet_parse(options):
     
@@ -189,36 +398,71 @@ def packet_parse(options):
             ip = eth.data
             src_addr=socket.inet_ntoa(ip.src)
             dst_addr=socket.inet_ntoa(ip.dst)
+            ts_date =  datetime.datetime.utcfromtimestamp(ts)
             
             #TCP Header
             if type(ip.data) == dpkt.tcp.TCP:
                 tcp = ip.data
                 flags =  tcp_flags(tcp.flags)
-                #print "header:",(ip.id,ip.ttl,ip.off,tcp.seq,tcp.ack,tcp.sport,tcp.dport,tcp.win,tcp.opts)
                 sig_name = pattern_match_tcp(ip,tcp,sig) #パターンマッチング
-                print_data = "[%s] %s:%d -> %s:%d"%(flags,src_addr,tcp.sport,dst_addr,tcp.dport)#TCP書式
-                ts_date =  datetime.datetime.utcfromtimestamp(ts)
+                print_data = "[TCP %s] %s:%d -> %s:%d"%(flags,src_addr,tcp.sport,dst_addr,tcp.dport)#TCP書式
+                #オプションの16進数表示print binascii.b2a_hex(tcp.opts)
                 if options.line:
                     print_line_result(print_data,options,ts_date,sig_name)
                 else:
                     print_tcp_result(print_data,ts_date,ip,tcp,sig_name)
             #UDP Header
             if type(ip.data) == dpkt.udp.UDP:
-                udp = ip.data
-                
+                udp = ip.data       
+                #DNS Query
+                dns = dpkt.dns.DNS(udp.data)
+                if udp.dport == 53:
+                    dns = dpkt.dns.DNS(udp.data)
+                    if dns.opcode == dpkt.dns.DNS_QUERY:#DNS query
+                        #print dns.qd[0].name
+                        print_data = "[DNS Query] %s:%d -> %s:%d"%(src_addr,udp.sport,dst_addr,udp.dport)#DNS_Q書式
+                        sig_name = pattern_match_dns(ip,udp,dns,sig)
+                    if options.line:
+                        print_line_result(print_data,options,ts_date,sig_name)
+                    else:
+                        print_dns_result(print_data,ts_date,ip,udp,dns,sig_name)
+                #DNS Response
+                elif udp.sport ==53:
+                    dns = dpkt.dns.DNS(udp.data)
+                    if dns.qr == dpkt.dns.DNS_R:#DNS response
+                        print_data = "[DNS Response] %s:%d -> %s:%d"%(src_addr,udp.sport,dst_addr,udp.dport)#DNS_R書式
+                        sig_name = pattern_match_dns(ip,udp,dns,sig)
+                    if options.line:
+                        print_line_result(print_data,options,ts_date,sig_name)
+                    else:
+                        print_dns_result(print_data,ts_date,ip,udp,dns,sig_name)
+                #UDP
+                else:
+                    sig_name = pattern_match_udp(ip,udp,sig)
+                    print_data = "[UDP] %s:%d -> %s:%d"%(src_addr,udp.sport,dst_addr,udp.dport)#DNS_R書式
+                    if options.line:
+                        print_line_result(print_data,options,ts_date,sig_name)
+                    else:
+                        print_udp_result(print_data,ts_date,ip,udp,sig_name)
             #ICMP Header
             if type(ip.data) == dpkt.icmp.ICMP:
                 icmp = ip.data
                 #ICMP Echo Request
                 if type(icmp.data) == dpkt.icmp.ICMP.Echo:
-                    icmp_echo = icmp.data
+                    sig_name = pattern_match_icmp(ip,icmp.data,sig) #パターンマッチング
+                    print_data = "[ICMP Echo Req] %s -> %s"%(src_addr,dst_addr)#ICMP書式
+                    icmp_data = icmp.data
+                    if options.line:
+                        print_line_result(print_data,options,ts_date,sig_name)
+                    else:
+                        print_icmp_result(print_data,ts_date,ip,icmp_data,sig_name)
 
     pcap_f.close()
 
 if __name__ == '__main__':
     
     #オプション設定
-    usage = "usage: %prog [options] keyword"
+    usage = "usage: %prog [options] file"
     version = "1.0"
     
     parser = OptionParser(usage=usage,version=version)
