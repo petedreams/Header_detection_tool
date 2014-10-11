@@ -8,7 +8,8 @@
 from optparse import OptionParser, OptionValueError
 import os,sys,dpkt,socket,json,datetime,binascii,urllib2
 
-SIG_FILE="./signature.json"
+SCRIPT_DIR=os.path.abspath(os.path.dirname(__file__))
+SIG_FILE=os.path.join(SCRIPT_DIR,"..","data","signature.json")
 
 #TCPフラグ判定
 def tcp_flags(flags):
