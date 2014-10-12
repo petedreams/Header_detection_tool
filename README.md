@@ -10,3 +10,6 @@
 
 ##セットアップ
 ```$ sudo pip install http://ipsr.ynu.ac.jp/*/headcap-1.0.tar.gz```
+
+##アンインストール
+```$ sudo pip uninstall headcap```
