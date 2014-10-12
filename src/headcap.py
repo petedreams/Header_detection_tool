@@ -9,6 +9,7 @@ import os,sys,dpkt,socket,json,datetime,binascii,urllib2
 
 SCRIPT_DIR=os.path.abspath(os.path.dirname(__file__))
 SIG_FILE=os.path.join(SCRIPT_DIR,"..","data","signature.json")
+SIG_URL = "http://localhost/signature.json"
 
 #TCPフラグ判定
 def tcp_flags(flags):
@@ -132,9 +133,10 @@ def pattern_match_tcp(ip,tcp,sig):
             if not flag:
                 break
         if flag:
-            return s["signature"]
+            return s["signature"],s.get("description","")
         else:
-            return False
+            return None,''
+    return None,''
 
 #ICMPヘッダのマッチング
 def pattern_match_icmp(ip,icmp,sig):
@@ -183,9 +185,10 @@ def pattern_match_icmp(ip,icmp,sig):
             if not flag:
                 break
         if flag:
-            return s["signature"]
+            return s["signature"],s.get("description","")
         else:
-            return False
+            return None,''
+    return None,''
 
 #DNS・UDPヘッダのマッチング
 def pattern_match_dns(ip,udp,dns,sig):
@@ -240,9 +243,10 @@ def pattern_match_dns(ip,udp,dns,sig):
             if not flag:
                 break
         if flag:
-            return s["signature"]
+            return s["signature"],s.get("description","")
         else:
-            return False
+            return None,''
+    return None,''
 
 #UDPヘッダのマッチング
 def pattern_match_udp(ip,udp,sig):
@@ -291,9 +295,10 @@ def pattern_match_udp(ip,udp,sig):
             if not flag:
                 break
         if flag:
-            return s["signature"]
+            return s["signature"],s.get("description","")
         else:
-            return False
+            return None,''
+    return None,''
 
 #一行出力
 def print_line_result(print_data,options,ts_date,sig_name):
@@ -322,33 +327,45 @@ def dns_type(dns_t):
         dnstype = None
     return dnstype
 
-def print_tcp_result(print_data,ts_date,ip,tcp,sig_name):
+def print_tcp_result(print_data,ts_date,ip,tcp,sig_name,ver=None):
     ipoff = ip_off(ip.off)
+    if ver:
+        s = "\n| information = %s"%ver
+    else:
+        s = ""
     str = """
 << %s >>
 |
 | date       = %s
 | signature  = %s
-| parameters = %s(ipid):%s(ttl):%s(ipoff):%s(seq):%s(ack):%s(win)
+| parameters = %s(ipid):%s(ttl):%s(ipoff):%s(seq):%s(ack):%s(win)%s
 |
 ---"""
-    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,tcp.seq,tcp.ack,tcp.win)
+    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,tcp.seq,tcp.ack,tcp.win,s)
 
-def print_icmp_result(print_data,ts_date,ip,icmp,sig_name):
+def print_icmp_result(print_data,ts_date,ip,icmp,sig_name,ver=None):
     ipoff = ip_off(ip.off)
+    if ver:
+        s = "\n| information = %s"%ver
+    else:
+        s = ""
     str = """
 << %s >>
 |
 | date       = %s
 | signature  = %s
-| parameters = %s(ipid):%s(ttl):%s(ipoff):%s(icmpid):%s(icmpseq)
+| parameters = %s(ipid):%s(ttl):%s(ipoff):%s(icmpid):%s(icmpseq)%s
 |
 ---"""
-    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,icmp.id,icmp.seq)
+    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,icmp.id,icmp.seq,s)
     
-def print_dns_result(print_data,ts_date,ip,udp,dns,sig_name):
+def print_dns_result(print_data,ts_date,ip,udp,dns,sig_name,ver=None):
     ipoff = ip_off(ip.off)
     dnstype = dns_type(dns.qd[0].type)
+    if ver:
+        s = "\n| information = %s"%ver
+    else:
+        s = ""
     str = """
 << %s >>
 |
@@ -356,22 +373,26 @@ def print_dns_result(print_data,ts_date,ip,udp,dns,sig_name):
 | signature  = %s
 | parameters = %s(ipid):%s(ttl):%s(ipoff):%s(dnsid)
 | type = %s
-| name = %s
+| name = %s%s
 |
 ---"""
-    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,dns.id,dnstype,dns.qd[0].name)
+    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,dns.id,dnstype,dns.qd[0].name,s)
 
-def print_udp_result(print_data,ts_date,ip,udp,sig_name):
+def print_udp_result(print_data,ts_date,ip,udp,sig_name,ver=None):
     ipoff = ip_off(ip.off)
+    if ver:
+        s = "\n| information = %s"%ver
+    else:
+        s = ""
     str = """
 << %s >>
 |
 | date       = %s
 | signature  = %s
-| parameters = %s(ipid):%s(ttl):%s(ipoff)
+| parameters = %s(ipid):%s(ttl):%s(ipoff)%s
 |
 ---"""
-    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff)
+    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,s)
 
 def check_signature_file():
 #シグネチャファイル確認
@@ -387,7 +408,7 @@ def check_signature_file():
 
 def packet_parse(options):
 #パケット解析
-    pcap_f=open(options.filepath)
+    pcap_f=open(options.file)
     try:
         pcap = dpkt.pcap.Reader(pcap_f)
     except:
@@ -403,7 +424,7 @@ def packet_parse(options):
             continue
             
         sig_name = False #検知結果のリセット
-        
+
         #IP Header
         if type(eth.data) == dpkt.ip.IP:
             ip = eth.data
@@ -415,58 +436,71 @@ def packet_parse(options):
             if type(ip.data) == dpkt.tcp.TCP:
                 tcp = ip.data
                 flags =  tcp_flags(tcp.flags)
-                sig_name = pattern_match_tcp(ip,tcp,sig) #パターンマッチング
+                sig_name,ver = pattern_match_tcp(ip,tcp,sig) #パターンマッチング
                 print_data = "[TCP %s] %s:%d -> %s:%d"%(flags,src_addr,tcp.sport,dst_addr,tcp.dport)#TCP書式
                 #オプションの16進出力print binascii.b2a_hex(tcp.opts)
                 if options.line:
                     print_line_result(print_data,options,ts_date,sig_name)
                 else:
-                    print_tcp_result(print_data,ts_date,ip,tcp,sig_name)
+                    if options.verbose:
+                        print_tcp_result(print_data,ts_date,ip,tcp,sig_name,ver)
+                    else:
+                        print_tcp_result(print_data,ts_date,ip,tcp,sig_name)
             #UDP Header
             if type(ip.data) == dpkt.udp.UDP:
                 udp = ip.data       
                 #DNS Query
-                dns = dpkt.dns.DNS(udp.data)
                 if udp.dport == 53:
                     dns = dpkt.dns.DNS(udp.data)
                     if dns.opcode == dpkt.dns.DNS_QUERY:#DNS query
-                        #print dns.qd[0].name
                         print_data = "[DNS Query] %s:%d -> %s:%d"%(src_addr,udp.sport,dst_addr,udp.dport)#DNS_Q書式
-                        sig_name = pattern_match_dns(ip,udp,dns,sig)
+                        sig_name,ver = pattern_match_dns(ip,udp,dns,sig)
                     if options.line:
                         print_line_result(print_data,options,ts_date,sig_name)
                     else:
-                        print_dns_result(print_data,ts_date,ip,udp,dns,sig_name)
+                        if options.verbose:
+                            print_dns_result(print_data,ts_date,ip,udp,dns,sig_name,ver)
+                        else:
+                            print_dns_result(print_data,ts_date,ip,udp,dns,sig_name)
                 #DNS Response
                 elif udp.sport ==53:
                     dns = dpkt.dns.DNS(udp.data)
                     if dns.qr == dpkt.dns.DNS_R:#DNS response
                         print_data = "[DNS Response] %s:%d -> %s:%d"%(src_addr,udp.sport,dst_addr,udp.dport)#DNS_R書式
-                        sig_name = pattern_match_dns(ip,udp,dns,sig)
+                        sig_name,ver = pattern_match_dns(ip,udp,dns,sig)
                     if options.line:
                         print_line_result(print_data,options,ts_date,sig_name)
                     else:
-                        print_dns_result(print_data,ts_date,ip,udp,dns,sig_name)
+                        if options.verbose:
+                            print_dns_result(print_data,ts_date,ip,udp,dns,sig_name,ver)
+                        else:
+                            print_dns_result(print_data,ts_date,ip,udp,dns,sig_name)
                 #UDP
                 else:
-                    sig_name = pattern_match_udp(ip,udp,sig)
+                    sig_name,ver = pattern_match_udp(ip,udp,sig)
                     print_data = "[UDP] %s:%d -> %s:%d"%(src_addr,udp.sport,dst_addr,udp.dport)#DNS_R書式
                     if options.line:
                         print_line_result(print_data,options,ts_date,sig_name)
                     else:
-                        print_udp_result(print_data,ts_date,ip,udp,sig_name)
+                        if options.verbose:
+                            print_udp_result(print_data,ts_date,ip,udp,sig_name,ver)
+                        else:
+                            print_udp_result(print_data,ts_date,ip,udp,sig_name)
             #ICMP Header
             if type(ip.data) == dpkt.icmp.ICMP:
                 icmp = ip.data
                 #ICMP Echo Request
                 if type(icmp.data) == dpkt.icmp.ICMP.Echo:
-                    sig_name = pattern_match_icmp(ip,icmp.data,sig) #パターンマッチング
+                    sig_name,ver = pattern_match_icmp(ip,icmp.data,sig) #パターンマッチング
                     print_data = "[ICMP Echo Req] %s -> %s"%(src_addr,dst_addr)#ICMP書式
                     icmp_data = icmp.data
                     if options.line:
                         print_line_result(print_data,options,ts_date,sig_name)
                     else:
-                        print_icmp_result(print_data,ts_date,ip,icmp_data,sig_name)
+                        if options.verbose:
+                            print_icmp_result(print_data,ts_date,ip,icmp_data,sig_name,ver)
+                        else:
+                            print_icmp_result(print_data,ts_date,ip,icmp_data,sig_name)
     pcap_f.close()
 
 def main():
@@ -479,27 +513,27 @@ def main():
     #入力ファイルチェック
     def check_file(option, opt, value, parser):
         if os.path.isfile(value):
-            parser.values.filepath = value
+            parser.values.file = value
         else:
             raise OptionValueError("option -r: '%s' was not found" % value)
 
     #入力ファイル
     parser.add_option(
-        "-r", "--file", 
+        "-r", 
         action="callback",
         callback=check_file,
         type="string",
-        dest="filepath",
+        dest="file",
         #default="./",
-        help="filepath"
+        help="read packets from file"
         )
-    #VirusTotal結果
+    #詳細表示
     parser.add_option(
-        "-v", "--VirusTotal",
+       "-v","--verbose",
         action="store_true",
-        dest="vt",
+        dest="verbose",
         default=False,
-        help="VirusTotal"
+        help="print verbose output"
         )
     #一行表示
     parser.add_option(
@@ -526,27 +560,41 @@ def main():
         help="update signature"
         )
     """parser.set_defaults(
-        filepath - "./"
+        file - "./"
     )"""
 
     options,args = parser.parse_args() #オプションのパース
 
+    #シグネチャアップデート
     if options.update:
+        while True:
+            try:
+                i = raw_input("Do you want to update the signature? [yes/no]: ")
+            except KeyboardInterrupt:
+                return False
+            if i.lower() in ('yes','y'): 
+                print "connecting to the server..." 
+                break
+            elif i.lower() in ('no','n'): 
+                sys.exit()
+                
         sig = check_signature_file()
-        url = "http://localhost/signature.json"
         try:
-            f = urllib2.urlopen(url)
+            f = urllib2.urlopen(SIG_URL)
         except:
             print "Error: cannot connect to the server"
             sys.exit()
-
         down_sig = json.load(f)
         if down_sig["version"]["version"] > sig["version"]["version"]:
-            pass#ファイルアップロード作業
+        #シグネチャバージョン確認
+            with open(SIG_FILE,"w") as new_sig_f:
+                f2 = urllib2.urlopen(SIG_URL)
+                new_sig_f.write(f2.read())
+                print "Signature update was completed. <signature version: %s>"%down_sig["version"]["version"]
         else:
             print "This signature file is the latest version."
 
-    elif not options.filepath:
+    elif not options.file:
         parser.error("file is required")
         sys.exit()
     else:
