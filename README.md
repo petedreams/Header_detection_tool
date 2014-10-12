@@ -2,7 +2,7 @@
 "特徴的なTCP/IPヘッダによるパケット検知ツール"
 
 ##準備
-#### 1. パッケージ管理システム[PIP](https://pip.pypa.io/en/latest/index.html)のインストール
+#### 1. パッケージ管理システム[pip](https://pip.pypa.io/en/latest/index.html)のインストール
 [get-pip.py](https://bootstrap.pypa.io/get-pip.py)をダウンロードし、実行  
 ```$ sudo python get-pip.py```
 #### 2. パケット解析モジュール[dpkt](https://code.google.com/p/dpkt/)のインストール
