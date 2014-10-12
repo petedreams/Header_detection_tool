@@ -1,1 +1,3 @@
-recursive-include Header_detection_tool *
+recursive-include src *
+recursive-include data *
+include MANIFEST.in
