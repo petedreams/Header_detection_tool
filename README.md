@@ -25,7 +25,7 @@
 
   -t time   -一行表示(-l)の場合、時間情報を追加します
   
-  -u, --update   -http://ipsr.ynu.ac.jp/aaaa/signature.jsonを取得し、最新のシグネチャを更新します
+  -u, --update   -[http://ipsr.ynu.ac.jp/aaaa/signature.json] を取得し、最新のシグネチャを更新します
 
 ##アンインストール
 ```$ sudo pip uninstall headcap```
