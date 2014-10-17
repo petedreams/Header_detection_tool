@@ -9,11 +9,14 @@
 ```$ sudo apt-get install python-dpkt (Ubuntuの場合)```
 
 ##セットアップ
-```$ sudo pip install http://ipsr.ynu.ac.jp/*/headcap-1.0.tar.gz```
+[headcap-1.0.tar.gz](http://ipsr.ynu.ac.jp/aaaa/headcap-1.0.tar.gz)をダウンロード  
+```$ tar zxvf headcap-1.0.tar.gz```  
+```$ cd headcap-1.0```  
+```$ sudo pip install -e ./```  
 
 ##使用方法
 
-  --version  -バージョンを表示します 
+  --version   -バージョンを表示します 
 
   -h file   -ヘルプメッセージを表示します 
   
