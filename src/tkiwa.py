@@ -583,7 +583,7 @@ def main():
                 
         sig = check_signature_file()
         try:
-            f = urllib2.urlopen(SIG_URL)
+            f = urllib2.urlopen(SIG_URL,timeout=10)
         except:
             print "Error: cannot connect to the server"
             sys.exit()
