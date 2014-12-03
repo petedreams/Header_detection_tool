@@ -5,11 +5,12 @@
 """Malicious Packet detection tool with protocol header."""
 
 from optparse import OptionParser, OptionValueError
-import os,sys,dpkt,socket,json,datetime,binascii,urllib2
+from signal import signal, SIGPIPE, SIG_DFL
+import os,sys,dpkt,socket,json,datetime,binascii,urllib2,ctypes
 
 SCRIPT_DIR=os.path.abspath(os.path.dirname(__file__))
 SIG_FILE=os.path.join(SCRIPT_DIR,"..","data","signature.json")
-SIG_URL = "http://ipsr.ynu.ac.jp/tkiwa/signature.json"
+SIG_URL = "http://ipsr.ynu.ac.jp/tkiwa/download/signature.json"
 
 #TCPフラグ判定
 def tcp_flags(flags):
@@ -56,11 +57,20 @@ def m_match(obj,m):
     else:
         return False
 
+def masscan(ip,tcp):
+    addr_10 = int(binascii.b2a_hex(ip.dst),16)
+    cal= addr_10^tcp.dport^tcp.seq
+    if ctypes.c_ushort(cal).value==ip.id:
+        return True
+
 #TCPヘッダのマッチング
 def pattern_match_tcp(ip,tcp,sig):
     #シグネチャを1つずつ調査
     for s in sig["tcp"]:
         flag = True
+        if s["signature"]=="masscan":
+            if not masscan(ip,tcp):
+                continue
         #単一値の判定
         for k, v in s["s_data"].items():
             if k == "ipid":
@@ -495,7 +505,10 @@ def packet_parse(options):
                 #ICMP Echo Request
                 if type(icmp.data) == dpkt.icmp.ICMP.Echo:
                     sig_name,ver = pattern_match_icmp(ip,icmp.data,sig) #パターンマッチング
-                    print_data = "[ICMP Echo Req] %s -> %s"%(src_addr,dst_addr)#ICMP書式
+                    if icmp.type == dpkt.icmp.ICMP_ECHO:
+                        print_data = "[ICMP Echo Req] %s -> %s"%(src_addr,dst_addr)#ICMP書式
+                    if icmp.type == dpkt.icmp.ICMP_ECHOREPLY:
+                        print_data = "[ICMP Echo Rep] %s -> %s"%(src_addr,dst_addr)#ICMP書式
                     icmp_data = icmp.data
                     if options.line:
                         print_line_result(print_data,options,ts_date,sig_name)
@@ -507,9 +520,12 @@ def packet_parse(options):
     pcap_f.close()
 
 def main():
+    #BrokenPipeエラーを表示しない
+    signal(SIGPIPE,SIG_DFL) 
+    
     #オプション設定
     usage = "usage: %prog [options] file"
-    version = "1.0"
+    version = "1.0.1"
     
     parser = OptionParser(usage=usage,version=version)
 
@@ -580,7 +596,8 @@ def main():
                 break
             elif i.lower() in ('no','n'): 
                 sys.exit()
-                
+        
+        print "signature file <%s> was downloaded"%SIG_URL
         sig = check_signature_file()
         try:
             f = urllib2.urlopen(SIG_URL,timeout=10)
