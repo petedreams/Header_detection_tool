@@ -1,7 +1,7 @@
 {
     "version":{
         "signature":"signature version 2 [2014/12/03]",
-        "version":2
+        "version":3
     },
     "tcp":[
     {
@@ -18,6 +18,24 @@
                 },
         "r_data":{
                 "ttl":[0,64]},
+        "m_data":{},
+        "description":"https://www.virustotal.com/ja/file/68af1a561be986fe4f7714ce41955729967621069f9a944c102a2a9d6a99ac65/analysis/"
+     },
+    {
+        "signature":"Morto_scan_NAT",
+        "signature_type":"0",
+        "s_data":{
+                "ipid":9496,
+                "off":16384,
+                "seq":2406000322,
+                "ack":0,
+                "dport":3389,
+                "win":65535
+                },
+        "r_data":{
+                "ttl":[0,64],
+                "sport":[0,4934],
+                "sport":[4936,65535]},
         "m_data":{},
         "description":"https://www.virustotal.com/ja/file/68af1a561be986fe4f7714ce41955729967621069f9a944c102a2a9d6a99ac65/analysis/"
      },
