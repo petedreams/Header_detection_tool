@@ -373,7 +373,16 @@ def print_icmp_result(print_data,ts_date,ip,icmp,sig_name,ver=None):
 #DNS出力
 def print_dns_result(print_data,ts_date,ip,udp,dns,sig_name,ver=None):
     ipoff = ip_off(ip.off)
-    dnstype = dns_type(dns.qd[0].type)
+    try:
+        dnstype = dns_type(dns.qd[0].type)
+    except:
+        dnstype = None
+
+    try:
+        dnsname = dns.qd[0].name
+    except:
+        dnsname = None
+
     if ver:
         s = "\n| information = %s"%ver
     else:
@@ -388,7 +397,7 @@ def print_dns_result(print_data,ts_date,ip,udp,dns,sig_name,ver=None):
 | name = %s%s
 |
 ---"""
-    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,dns.id,dnstype,dns.qd[0].name,s)
+    print str%(print_data,ts_date,sig_name,ip.id,ip.ttl,ipoff,dns.id,dnstype,dnsname,s)
 
 #UDP出力
 def print_udp_result(print_data,ts_date,ip,udp,sig_name,ver=None):
@@ -464,7 +473,10 @@ def packet_parse(options):
                 udp = ip.data       
                 #DNS Query
                 if udp.dport == 53:
-                    dns = dpkt.dns.DNS(udp.data)
+                    try:
+                        dns = dpkt.dns.DNS(udp.data)
+                    except:
+                        print "broken DNS packet"
                     if dns.opcode == dpkt.dns.DNS_QUERY:#DNS query
                         print_data = "[DNS Query] %s:%d -> %s:%d"%(src_addr,udp.sport,dst_addr,udp.dport)#DNS_Q書式
                         sig_name,ver = pattern_match_dns(ip,udp,dns,sig)
@@ -477,7 +489,10 @@ def packet_parse(options):
                             print_dns_result(print_data,ts_date,ip,udp,dns,sig_name)
                 #DNS Response
                 elif udp.sport ==53:
-                    dns = dpkt.dns.DNS(udp.data)
+                    try:
+                        dns = dpkt.dns.DNS(udp.data)
+                    except:
+                        print "broken DNS packet"
                     if dns.qr == dpkt.dns.DNS_R:#DNS response
                         print_data = "[DNS Response] %s:%d -> %s:%d"%(src_addr,udp.sport,dst_addr,udp.dport)#DNS_R書式
                         sig_name,ver = pattern_match_dns(ip,udp,dns,sig)
