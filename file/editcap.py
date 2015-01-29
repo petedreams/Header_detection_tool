@@ -19,8 +19,6 @@ def editcap(infile,outfile,sp):
 #pcap“Ç‚İ‚İ
     s_time=None#Šî€ŠÔ
     counter=0
-    pcount=1
-
     f= open(infile)
     pcap = dpkt.pcap.Reader(f)
     for ts,buf in pcap:
@@ -29,45 +27,46 @@ def editcap(infile,outfile,sp):
             eth = dpkt.ethernet.Ethernet(buf)
         except:
             continue
-        if not s_time:
-            init_d = datetime.datetime.fromtimestamp(int(ts))#mirosecondØ‚èÌ‚Ä
-            writefile = writefilepath(init_d,outfile,counter)
-            f=open(writefile,'wb')
-            writefile = dpkt.pcap.Writer(open(writefile,'wb'))
-            writefile.writepkt(eth,ts)
-            s_time = int(ts)
-            g_time = s_time+sp
-            counter+=1
-        elif ts < g_time:
-            pass
-            init_d = datetime.datetime.fromtimestamp(int(ts))#mirosecondØ‚èÌ‚Ä
-            writefile.writepkt(eth,ts)
-        elif g_time <= ts:
-            if ts < g_time+sp:
-                d = datetime.datetime.fromtimestamp(g_time)
-                writefile = writefilepath(d,outfile,counter)
+        try:
+            if not s_time:
+                init_d = datetime.datetime.fromtimestamp(int(ts))#mirosecondØ‚èÌ‚Ä
+                writefile = writefilepath(init_d,outfile,counter)
+                f=open(writefile,'wb')
                 writefile = dpkt.pcap.Writer(open(writefile,'wb'))
                 writefile.writepkt(eth,ts)
-                g_time += sp
+                s_time = int(ts)
+                g_time = s_time+sp
                 counter+=1
-            else:
-                while writedflag:
+            elif ts < g_time:
+                pass
+                writefile.writepkt(eth,ts)
+            elif g_time <= ts:
+                if ts < g_time+sp:
                     d = datetime.datetime.fromtimestamp(g_time)
                     writefile = writefilepath(d,outfile,counter)
                     writefile = dpkt.pcap.Writer(open(writefile,'wb'))
-                    g_time+=sp
+                    writefile.writepkt(eth,ts)
+                    g_time += sp
                     counter+=1
-                    if g_time+sp <= ts:
-                        continue
-                    else:
+                else:
+                    while writedflag:
                         d = datetime.datetime.fromtimestamp(g_time)
                         writefile = writefilepath(d,outfile,counter)
                         writefile = dpkt.pcap.Writer(open(writefile,'wb'))
                         g_time+=sp
                         counter+=1
-                        init_d = datetime.datetime.fromtimestamp(int(ts))#mirosecondØ‚èÌ‚Ä
-                        writefile.writepkt(eth,ts)
-                        writedflag=False
+                        if g_time+sp <= ts:
+                            continue
+                        else:
+                            d = datetime.datetime.fromtimestamp(g_time)
+                            writefile = writefilepath(d,outfile,counter)
+                            writefile = dpkt.pcap.Writer(open(writefile,'wb'))
+                            g_time+=sp
+                            counter+=1
+                            writefile.writepkt(eth,ts)
+                            writedflag=False
+        except:
+            continue
         pcount+=1
 
 if __name__ == '__main__':
