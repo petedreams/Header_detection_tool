@@ -19,15 +19,12 @@ def editcap(infile,outfile,sp):
 #pcap“Ç‚İ‚İ
     s_time=None#Šî€ŠÔ
     counter=0
-    f= open(infile)
+    f= open(infile,'rb')
     pcap = dpkt.pcap.Reader(f)
-    for ts,buf in pcap:
-        writedflag=True
-        try:
+    try:
+        for ts,buf in pcap:
+            writedflag=True
             eth = dpkt.ethernet.Ethernet(buf)
-        except:
-            continue
-        try:
             if not s_time:
                 init_d = datetime.datetime.fromtimestamp(int(ts))#mirosecondØ‚èÌ‚Ä
                 writefile = writefilepath(init_d,outfile,counter)
@@ -65,9 +62,8 @@ def editcap(infile,outfile,sp):
                             counter+=1
                             writefile.writepkt(eth,ts)
                             writedflag=False
-        except:
-            continue
-        pcount+=1
+    except:
+        pass
 
 if __name__ == '__main__':
     try:
@@ -77,4 +73,3 @@ if __name__ == '__main__':
         editcap(infile,outfile,sp)
     except IOError:
         print '[IOError] usage: editcap.py <infile> <outfile> <sec>'
-
