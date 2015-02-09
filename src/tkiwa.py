@@ -45,6 +45,12 @@ class IPHeader:
         self.sig_name = None
         self.hdr = {'ipid':self.ipid,'off':self.off,'ttl':self.ttl}
         
+    def masscan(self,ip,tcp):
+        addr_10 = int(binascii.b2a_hex(ip.dst),16)
+        cal= addr_10^tcp.dport^tcp.seq
+        if ctypes.c_ushort(cal).value==ip.id:
+            return True
+
     def ptn_match(self,sig,proto):
         for s in sig[proto]:
             if s['signature']=='masscan':
@@ -87,12 +93,6 @@ class TCPHeader(IPHeader):
         self.len = len(tcp.data)
         self.flags = tcp_flags(tcp.flags)
         self.hdr.update({'seq':self.seq,'ack':self.ack,'sport':self.sport,'dport':self.dport,'win':self.win,'option':self.opts,'len':self.len})
-
-    def masscan(self,ip,tcp):
-        addr_10 = int(binascii.b2a_hex(ip.dst),16)
-        cal= addr_10^tcp.dport^tcp.seq
-        if ctypes.c_ushort(cal).value==ip.id:
-            return True
 
     def print_result(self,options):
         def print_tcp(ver = None):
@@ -363,11 +363,6 @@ def packet_parse(options):
                 udp = ip.data       
                 #DNS
                 if udp.sport == 53 or udp.dport == 53:
-                    dns = dpkt.dns.DNS(udp.data)
-                    dns_h = DNSHeader(ts_date,ip,udp,dns)
-                    dns_h.ptn_match(sig,'dns')
-                    dns_h.print_result(options)
-                    continue
                     try:
                         dns = dpkt.dns.DNS(udp.data)
                         dns_h = DNSHeader(ts_date,ip,udp,dns)
@@ -390,7 +385,7 @@ def main():
     
     #オプション設定
     usage = 'usage: %prog [options] file'
-    version = '1.2.0'
+    version = '2.0.0'
     
     parser = OptionParser(usage=usage,version=version)
 
