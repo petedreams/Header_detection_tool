@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import sys
 setup(
     name = "tkiwa",
-    version = "1.0",
+    version = "2.0",
     description = "Malicious Packet Detection Tool",
     packages = find_packages(),
     author="Takashi Koide",
@@ -10,5 +10,5 @@ setup(
     url="http://ipsr.ynu.ac.jp/tkiwa/index.html",
     entry_points="""
     [console_scripts]
-    headcap = src.headcap:main
+    tkiwa = src.tkiwa:main
     """,)

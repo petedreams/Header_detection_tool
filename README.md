@@ -1,4 +1,4 @@
-# headcap
+# tkiwa
 "特徴的なTCP/IPヘッダによるパケット検知ツール"
 
 ##準備
@@ -9,9 +9,9 @@
 ```$ sudo apt-get install python-dpkt (Ubuntuの場合)```
 
 ##セットアップ
-[headcap-1.0.tar.gz](http://ipsr.ynu.ac.jp/aaaa/headcap-1.0.tar.gz)をダウンロード  
-```$ tar zxvf headcap-1.0.tar.gz```  
-```$ cd headcap-1.0```  
+[tkiwa-1.x.tar.gz](http://ipsr.ynu.ac.jp/tkiwa/index.html#download)をダウンロード  
+```$ tar xvf tkiwa-1.x.tar.gz```  
+```$ cd tkiwa-2.x```  
 ```$ sudo pip install -e ./```  
 
 ##使用方法
@@ -28,8 +28,10 @@
 
   -t time   -一行表示(-l)の場合、時間情報を追加します
   
-  -u, --update   -[http://ipsr.ynu.ac.jp/aaaa/signature.json] を取得し、最新のシグネチャを更新します
+  -u, --update   -[http://ipsr.ynu.ac.jp/tkiwa/signature.json] を取得し、最新のシグネチャに更新します
 
 ##アンインストール
-```$ sudo pip uninstall headcap```
+```$ sudo pip uninstall tkiwa```
 
+##作成者
+横浜国立大学 小出 駿 (koide-takashi-mx@ynu.jp)
