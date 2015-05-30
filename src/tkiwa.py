@@ -18,6 +18,8 @@ import ctypes
 import platform
 import socket
 import time
+import struct
+
 try:
     import pcapy
 except ImportError:
@@ -68,16 +70,31 @@ class IPHeader:
         self.sig_name = None
         self.hdr = {'ipid':self.ipid,'off':self.off,'ttl':self.ttl}
         
-    def masscan(self,ip,tcp):
+    def masscan(self,ip,tcpudp,massid):
         addr_10 = int(binascii.b2a_hex(ip.dst),16)
-        cal= addr_10^tcp.dport^tcp.seq
+        cal= addr_10^tcpudp.dport^massid
         if ctypes.c_ushort(cal).value==ip.id:
             return True
 
     def ptn_match(self,sig,proto):
         for s in sig[proto]:
-            if s['signature']=='masscan':
-                if not self.masscan(self.ip,self.tcp):
+            if s['signature']=='masscan_tcp':
+                if not self.masscan(self.ip,self.tcp,self.tcp.seq):
+                    continue
+            if s['signature']=='masscan_dns':
+                if not self.masscan(self.ip,self.udp,self.dnsid):
+                    continue
+            if s['signature']=='masscan_ntb':
+                if proto == "udp" and self.ntbid:
+                    if not self.masscan(self.ip,self.udp,self.ntbid):
+                        continue
+                else:
+                    continue
+            if s['signature']=='masscan_snmp':
+                if proto == "udp" and self.snmpid:
+                    if not self.masscan(self.ip,self.udp,self.snmpid):
+                        continue
+                else:
                     continue
             flag = True
             #単一値の判定
@@ -201,6 +218,8 @@ class UDPHeader(IPHeader):
         self.udp = None
         self.sport = None
         self.dport = None
+        self.ntbid = None
+        self.snmpid = None
 
     def set_header(self,ts,ip,udp):
         IPHeader.set_header(self,ts,ip)
@@ -208,6 +227,20 @@ class UDPHeader(IPHeader):
         self.sport = udp.sport
         self.dport = udp.dport
         self.hdr.update({'sport':self.sport,'dport':self.dport})
+        if udp.sport == 137 or udp.dport == 137:
+            try:
+                ntbid = udp.data[0:2]
+                ntbid = struct.unpack('>H', ntbid)[0]
+                self.ntbid = ntbid
+            except struct.error:
+                pass
+        elif udp.sport == 161 or udp.dport == 161:
+            try:
+                snmpid = udp.data[17:21]
+                snmpid = struct.unpack('>I', snmpid)[0]
+                self.snmpid = snmpid
+            except struct.error:
+                pass
 
     def print_result(self,options):
         def print_udp(ver = None):
@@ -245,12 +278,6 @@ class DNSHeader(UDPHeader):
         self.dns = dns
         self.dnsid=dns.id
         self.hdr.update({'dnsid':self.dnsid})
-        """
-        try:
-            self.query = self.dns.qd[0].name
-        except:
-            self.query = None
-        """
 
     def dns_type(self,dns_t):
         types = {1:'A',2:'NS',5:'CNAME',6:'SOA',12:'PTR',13:'HINFO',15:'MX',16:'TXT',28:'AAAA',33:'SRV'}
@@ -372,10 +399,10 @@ def m_match(obj,m):
 
 def packet_parse(options,buf,ts,sig):
 #パケット解析
-    try:
-        eth = dpkt.ethernet.Ethernet(buf)
-    except:
-        return
+    #try:
+    eth = dpkt.ethernet.Ethernet(buf)
+    #except:
+    #    return
         
     #IP Header
     if type(eth.data) == dpkt.ip.IP:
@@ -539,20 +566,6 @@ def main():
     else:
         sig = check_signature_file()
         if options.dev:
-            """if platform.system() == 'Darwin':
-                print '-i: cannot run on OSX'
-                sys.exit()
-            ret =  os.system("ifconfig eth0 promisc")
-            if ret == 0:
-                sock = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, ETH_P_IP)
-                sock.bind((options.interface, ETH_P_IP))
-                count = 0
-                while True:
-                    count += 1
-                    print count
-                    buf = sock.recv(65535)
-                    ts = time.time()
-                    packet_parse(options,buf,ts,sig)"""
             p = pcapy.open_live(options.dev, 65536, True, 100)
             while(True):
                 try:
@@ -572,8 +585,9 @@ def main():
                 pcap = dpkt.pcap.Reader(pcap_f)
                 for ts,buf in pcap:
                     packet_parse(options,buf,ts,sig) #pcapをパース、パターンマッチング
-            except:
+            except ValueError as e:
                 print 'Error: unknown file format'
+                print e
                 sys.exit()
 
 if __name__ == '__main__':
