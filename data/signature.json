@@ -1,6 +1,6 @@
 {
     "version":{
-        "signature":"signature version 2 [2014/12/03]",
+        "signature":"signature version 3 [2014/12/11]",
         "version":3
     },
     "tcp":[
@@ -176,7 +176,7 @@
 
             },
      {
-        "signature":"masscan",
+        "signature":"masscan_tcp",
         "s_data":{
                 "win":1024
                 },
@@ -217,7 +217,27 @@
                 "ttl":[129,255]},
         "m_data":{},
         "description":"https://zmap.io/"
-    }
+    },
+     {
+        "signature":"masscan_ntb",
+        "s_data":{},
+        "r_data":{
+                "ttl":[129,255]
+                },
+        "m_data":{
+                },
+        "description":"https://github.com/robertdavidgraham/masscan"
+     },
+     {
+        "signature":"masscan_snmp",
+        "s_data":{},
+        "r_data":{
+                "ttl":[129,255]
+                },
+        "m_data":{
+                },
+        "description":"https://github.com/robertdavidgraham/masscan"
+     }
             ],
     "dns":[
     {
@@ -245,6 +265,16 @@
         "m_data":{},
             
         "description":"https://zmap.io/"
-    }
+    },
+     {
+        "signature":"masscan_dns",
+        "s_data":{},
+        "r_data":{
+                "ttl":[129,255]
+                },
+        "m_data":{
+                },
+        "description":"https://github.com/robertdavidgraham/masscan"
+     }
     ]
     }
