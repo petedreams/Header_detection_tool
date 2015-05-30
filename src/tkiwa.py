@@ -10,13 +10,23 @@ from signal import signal, SIGPIPE, SIG_DFL, SIGINT, SIG_DFL
 import os
 import sys
 import dpkt
-import socket
 import json
 import datetime
 import binascii
 import urllib2
 import ctypes
+import platform
+import socket
+import time
+try:
+    import pcapy
+except ImportError:
+    print 'using [-i] requiers install pcapy'
 
+ETH_P_IP = 0x800
+SOL_PACKET = 263
+PACKET_ADD_MEMBERSHIP = 1
+PACKET_MR_PROMISC = 1
 SCRIPT_DIR=os.path.abspath(os.path.dirname(__file__))
 SIG_FILE=os.path.join(SCRIPT_DIR,'..','data','signature.json')
 SIG_URL = 'http://ipsr.ynu.ac.jp/tkiwa/download/signature.json'
@@ -32,7 +42,20 @@ def print_line_result(obj,print_data,options):
         print '%s [%s]'%(print_data,sig)
 
 class IPHeader:
-    def __init__(self,ts,ip):
+    def __init__(self):
+        self.ts = None
+        self.ip = None
+        self.src_addr = None
+        self.dst_addr = None
+        self.ts_date = None
+        self.ipid = None
+        self.off = None
+        self.ttl = None
+        self.ver = None
+        self.sig_name = None
+        self.hdr = {}
+
+    def set_header(self,ts,ip):
         self.ts = ts
         self.ip = ip
         self.src_addr = socket.inet_ntoa(ip.src)
@@ -81,8 +104,20 @@ class IPHeader:
                 break
 
 class TCPHeader(IPHeader):
-    def __init__(self,ts,ip,tcp):
-        IPHeader.__init__(self,ts,ip)
+    def __init__(self):
+        IPHeader.__init__(self)
+        self.tcp = None
+        self.seq = None
+        self.ack = None
+        self.sport = None
+        self.dport = None
+        self.win = None
+        self.opts = None
+        self.len = None
+        self.flags = None
+
+    def set_header(self,ts,ip,tcp):
+        IPHeader.set_header(self,ts,ip)
         self.tcp = tcp
         self.seq = tcp.seq
         self.ack = tcp.ack
@@ -120,8 +155,14 @@ class TCPHeader(IPHeader):
                 print_tcp()
 
 class ICMPHeader(IPHeader):
-    def __init__(self,ts,ip,icmp):
-        IPHeader.__init__(self,ts,ip)
+    def __init__(self):
+        IPHeader.__init__(self)
+        self.icmp = None
+        self.icmpid = None
+        self.icmpseq = None
+
+    def set_header(self,ts,ip,icmp):
+        IPHeader.set_header(self,ts,ip)
         self.icmp = icmp
         self.icmpid = icmp.data.id
         self.icmpseq = icmp.data.seq
@@ -155,8 +196,14 @@ class ICMPHeader(IPHeader):
                 print_icmp()
 
 class UDPHeader(IPHeader):
-    def __init__(self,ts,ip,udp):
-        IPHeader.__init__(self,ts,ip)
+    def __init__(self):
+        IPHeader.__init__(self)
+        self.udp = None
+        self.sport = None
+        self.dport = None
+
+    def set_header(self,ts,ip,udp):
+        IPHeader.set_header(self,ts,ip)
         self.udp = udp
         self.sport = udp.sport
         self.dport = udp.dport
@@ -188,8 +235,13 @@ class UDPHeader(IPHeader):
                 print_udp()
 
 class DNSHeader(UDPHeader):
-    def __init__(self,ts,ip,udp,dns):
-        UDPHeader.__init__(self,ts,ip,udp)
+    def __init__(self):
+        UDPHeader.__init__(self)
+        self.dns = None
+        self.dnsid = None
+
+    def set_header(self,ts,ip,udp,dns):
+        UDPHeader.set_header(self,ts,ip,udp)
         self.dns = dns
         self.dnsid=dns.id
         self.hdr.update({'dnsid':self.dnsid})
@@ -318,64 +370,58 @@ def m_match(obj,m):
     else:
         return False
 
-def packet_parse(options):
+def packet_parse(options,buf,ts,sig):
 #パケット解析
-    pcap_f=open(options.file,'rb')
     try:
-        pcap = dpkt.pcap.Reader(pcap_f)
+        eth = dpkt.ethernet.Ethernet(buf)
     except:
-        print 'Error: unknown file format'
-        sys.exit()
-    
-    sig = check_signature_file()
+        return
         
-    for ts,buf in pcap:
-        try:
-            eth = dpkt.ethernet.Ethernet(buf)
-        except:
-            continue
-            
-        #IP Header
-        if type(eth.data) == dpkt.ip.IP:
-            ip = eth.data
-            ts_date =  datetime.datetime.utcfromtimestamp(ts)
+    #IP Header
+    if type(eth.data) == dpkt.ip.IP:
+        ip = eth.data
+        ts_date =  datetime.datetime.utcfromtimestamp(ts)
 
-            #TCP Header
-            if type(ip.data) == dpkt.tcp.TCP:
-                tcp = ip.data
-                tcp_h = TCPHeader(ts_date,ip,tcp)
-                tcp_h.ptn_match(sig,'tcp')
-                tcp_h.ver
-                tcp_h.print_result(options)
+        #TCP Header
+        if type(ip.data) == dpkt.tcp.TCP:
+            tcp = ip.data
+            tcp_h = TCPHeader()
+            tcp_h.set_header(ts_date,ip,tcp)
+            tcp_h.ptn_match(sig,'tcp')
+            tcp_h.ver
+            tcp_h.print_result(options)
 
-            #ICMP Header
-            if type(ip.data) == dpkt.icmp.ICMP:
-                icmp = ip.data
-                #ICMP Echo Request
-                if type(icmp.data) == dpkt.icmp.ICMP.Echo:
-                    if icmp.type == dpkt.icmp.ICMP_ECHO or icmp.type == dpkt.icmp.ICMP_ECHOREPLY:
-                        icmp_h = ICMPHeader(ts_date,ip,icmp)
-                        icmp_h.ptn_match(sig,'icmp')
-                        icmp_h.print_result(options)
+        #ICMP Header
+        if type(ip.data) == dpkt.icmp.ICMP:
+            icmp = ip.data
+            #ICMP Echo Request
+            if type(icmp.data) == dpkt.icmp.ICMP.Echo:
+                if icmp.type == dpkt.icmp.ICMP_ECHO or icmp.type == dpkt.icmp.ICMP_ECHOREPLY:
+                    icmp_h = ICMPHeader()
+                    icmp_h.set_header(ts_date,ip,icmp)
+                    icmp_h.ptn_match(sig,'icmp')
+                    icmp_h.print_result(options)
 
-            #UDP Header
-            if type(ip.data) == dpkt.udp.UDP:
-                udp = ip.data       
-                #DNS
-                if udp.sport == 53 or udp.dport == 53:
-                    try:
-                        dns = dpkt.dns.DNS(udp.data)
-                        dns_h = DNSHeader(ts_date,ip,udp,dns)
-                        dns_h.ptn_match(sig,'dns')
-                        dns_h.print_result(options)
-                        continue
-                    except:
-                        #broken DNS or not DNS packet
-                        pass
-                #UDP
-                udp_h = UDPHeader(ts_date,ip,udp)
-                udp_h.ptn_match(sig,'udp')
-                udp_h.print_result(options)
+        #UDP Header
+        if type(ip.data) == dpkt.udp.UDP:
+            udp = ip.data       
+            #DNS
+            if udp.sport == 53 or udp.dport == 53:
+                try:
+                    dns = dpkt.dns.DNS(udp.data)
+                    dns_h = DNSHeader()
+                    dns_h.set_header(ts_date,ip,udp,dns)
+                    dns_h.ptn_match(sig,'dns')
+                    dns_h.print_result(options)
+                    return
+                except:
+                    #broken DNS or not DNS packet
+                    pass
+            #UDP
+            udp_h = UDPHeader()
+            udp_h.set_header(ts_date,ip,udp)
+            udp_h.ptn_match(sig,'udp')
+            udp_h.print_result(options)
 
 def main():
     #BrokenPipeエラーを表示しない
@@ -449,6 +495,15 @@ def main():
         default=False,
         help='print dns query and answer'
         )
+    #入力NIC
+    parser.add_option(
+        '-i', 
+        action='store',
+        type='string',
+        dest='dev',
+        default=None,
+        help='listen on interface'
+        )
 
     options,args = parser.parse_args() #オプションのパース
 
@@ -481,12 +536,45 @@ def main():
                 print 'Signature update was completed. <signature version: %s>'%down_sig['version']['version']
         else:
             print 'This signature file is the latest version.'
-    elif not options.file:
-        parser.error('file is required')
-        sys.exit()
     else:
-        packet_parse(options) #pcapをパース、パターンマッチング
+        sig = check_signature_file()
+        if options.dev:
+            """if platform.system() == 'Darwin':
+                print '-i: cannot run on OSX'
+                sys.exit()
+            ret =  os.system("ifconfig eth0 promisc")
+            if ret == 0:
+                sock = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, ETH_P_IP)
+                sock.bind((options.interface, ETH_P_IP))
+                count = 0
+                while True:
+                    count += 1
+                    print count
+                    buf = sock.recv(65535)
+                    ts = time.time()
+                    packet_parse(options,buf,ts,sig)"""
+            p = pcapy.open_live(options.dev, 65536, True, 100)
+            while(True):
+                try:
+                    ts = time.time()
+                    (header,data) = p.next()
+                    packet_parse(options,data,ts,sig) #pcapをパース、パターンマッチング
+                except pcapy.PcapError:
+                    continue
 
+
+        else:
+            if not options.file:
+                parser.error('file is required')
+                sys.exit()
+            pcap_f=open(options.file,'rb')
+            try:
+                pcap = dpkt.pcap.Reader(pcap_f)
+                for ts,buf in pcap:
+                    packet_parse(options,buf,ts,sig) #pcapをパース、パターンマッチング
+            except:
+                print 'Error: unknown file format'
+                sys.exit()
 
 if __name__ == '__main__':
     main()
