@@ -9,8 +9,8 @@
 ```$ sudo apt-get install python-dpkt (Ubuntuの場合)```
 
 ##セットアップ
-[tkiwa-1.x.tar.gz](http://ipsr.ynu.ac.jp/tkiwa/index.html#download)をダウンロード  
-```$ tar xvf tkiwa-1.x.tar.gz```  
+[tkiwa-2.x.tar.gz](http://ipsr.ynu.ac.jp/tkiwa/index.html#download)をダウンロード  
+```$ tar xvf tkiwa-2.x.tar.gz```  
 ```$ cd tkiwa-2.x```  
 ```$ sudo pip install -e ./```  
 
