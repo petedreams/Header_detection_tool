@@ -399,10 +399,7 @@ def m_match(obj,m):
 
 def packet_parse(options,buf,ts,sig):
 #パケット解析
-    #try:
     eth = dpkt.ethernet.Ethernet(buf)
-    #except:
-    #    return
         
     #IP Header
     if type(eth.data) == dpkt.ip.IP:
@@ -441,7 +438,7 @@ def packet_parse(options,buf,ts,sig):
                     dns_h.ptn_match(sig,'dns')
                     dns_h.print_result(options)
                     return
-                except:
+                except IndexError:
                     #broken DNS or not DNS packet
                     pass
             #UDP
